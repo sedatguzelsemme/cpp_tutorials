@@ -1,18 +1,59 @@
-image:
-  - Visual Studio 2019
-clone_folder: c:\projects\source
+# AppVeyor configuration for cpp_tutorial Project
+version: 1.0.{build}
 
+# Build environment
+os: Visual Studio 2022
+
+# Branches to build
+branches:
+  only:
+    - master
+
+# Configuration matrix
+platform:
+  - x64
+
+configuration:
+  - Release
+  - Debug
+
+# Environment setup
 environment:
-    PYTHON: "C:\\Python38-x64\\python.exe"
+  matrix:
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+
+# Build scripts
+install:
+  # Ensure CMake is available
+  - ps: Install-Product node 14
+  - set PATH=C:\Program Files\CMake\bin;%PATH%
+  - cmake --version
+
+before_build:
+  - mkdir build
+  - cd build
+  - cmake -G "Ninja"  ..
 
 build_script:
-- cmd: >-
-    set PATH=%PATH%;C:\Users\appveyor\AppData\Roaming\Python\Python38\Scripts
-    
-    "%PYTHON%" -m pip install --user conan
-    
-    cmake -S c:\projects\source -B ./build -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE:STRING=Release
-    
-    cmake --build ./build --config "Release"
+  - cmake --build . --config %CONFIGURATION%
+
 test_script:
-- cmd: cd build && ctest -C Debug
+  # Uncomment if you have tests
+  # - ctest -C %CONFIGURATION%
+
+# Artifacts
+artifacts:
+  - path: build\**\*.exe
+    name: Executables
+
+  - path: docs\**\*.html
+    name: Documentation
+
+# Notifications (optional)
+notifications:
+  - provider: Email
+    to:
+      - behnam.asadi@gmail.com
+    on_build_success: true
+    on_build_failure: true
+

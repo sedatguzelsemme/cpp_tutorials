@@ -389,18 +389,212 @@ struct Vector<3> {
 };
 ```
 
+# Templated class in cpp
+
+In C++, it's generally recommended to define templated classes in a header file, not in a .cpp file. The reason for this lies in how the C++ compiler handles templates.
+
+When you use a template class in your code, the compiler generates an instance of the template for the specific types used in your code. This process is called template instantiation. For the compiler to do this, it needs to see the full definition of the template class at the point of instantiation. 
+
+If the template definition is in a .cpp file, it will only be available in that translation unit. This means that if you try to use the template in another .cpp file, the compiler won't have access to the necessary code to instantiate the template, leading to a linker error.
+
+By placing the template definition in a header file, you ensure that it is included in every .cpp file that uses the template, allowing the compiler to generate the needed instances.
+
+However, there are techniques to define templates in a .cpp file if you know all the types that will be used with the template ahead of time. This is known as explicit instantiation. In this case, you can define the template in a .cpp file and then explicitly instantiate it for the specific types you need. But this approach is less flexible and generally less common than defining templates in header files.
+
+Let's illustrate this with a simple example of a templated class in C++. 
+
+First, I'll show how to correctly place a template class in a header file. Then, I'll demonstrate the less common approach of defining it in a .cpp file with explicit instantiation for specific types.
+
+### Example with Template in Header File
+
+1. **MyTemplateClass.h**
+   ```cpp
+   #ifndef MY_TEMPLATE_CLASS_H
+   #define MY_TEMPLATE_CLASS_H
+
+   // Template class definition
+   template <typename T>
+   class MyTemplateClass {
+   public:
+       MyTemplateClass(T value) : value_(value) {}
+
+       T getValue() const {
+           return value_;
+       }
+
+   private:
+       T value_;
+   };
+
+   #endif // MY_TEMPLATE_CLASS_H
+   ```
+
+2. **main.cpp**
+   ```cpp
+   #include <iostream>
+   #include "MyTemplateClass.h"
+
+   int main() {
+       MyTemplateClass<int> intInstance(5);
+       MyTemplateClass<double> doubleInstance(3.14);
+
+       std::cout << "Integer value: " << intInstance.getValue() << std::endl;
+       std::cout << "Double value: " << doubleInstance.getValue() << std::endl;
+
+       return 0;
+   }
+   ```
+
+In this setup, the template class is defined in the header file (`MyTemplateClass.h`). This way, any .cpp file that includes this header will have access to the complete template definition, allowing the compiler to instantiate it for any type used in those .cpp files.
+
+### Example with Explicit Instantiation in CPP File
+
+1. **MyTemplateClass.cpp**
+   ```cpp
+   #include "MyTemplateClass.h"
+
+   // Explicit instantiation of the template for int and double
+   template class MyTemplateClass<int>;
+   template class MyTemplateClass<double>;
+   ```
+
+2. **MyTemplateClass.h**
+   ```cpp
+   // Same as before
+   ```
+
+3. **main.cpp**
+   ```cpp
+   // Same as before
+   ```
+
+In this case, `MyTemplateClass.cpp` contains explicit instantiations of the template class for `int` and `double`. This means that the compiler will generate the template code for these two types in this translation unit. However, if you try to use `MyTemplateClass` with a type other than `int` or `double` in another .cpp file, you will get a linker error unless you add an explicit instantiation for that type as well.
+
+The first approach (defining the template in the header) is more flexible and is the commonly used practice in C++. The second approach (explicit instantiation in the .cpp file) is more restrictive and is generally used in specific scenarios where template instantiation overhead needs to be controlled, or for reducing compilation times in large projects.
 
 
 
-# Tag Dispatch
+# Expression Templates
 
 
-Refs: [1](https://www.youtube.com/watch?v=Vkck4EU2lOU)
+Expression templates in C++ are an advanced programming technique used primarily for optimizing the performance of numerical computations. They leverage the C++ template and operator overloading features to defer and optimize the execution of expressions, especially in the context of array or vector operations. Here's a breakdown of how they work and their benefits:
 
-# SFINAE
+### How Expression Templates Work
+
+1. **Template Metaprogramming**: Expression templates are a form of template metaprogramming. They use templates to generate code at compile time based on the types and expressions used in the code.
+
+2. **Operator Overloading**: By overloading operators (like `+`, `-`, `*`, etc.), expression templates capture mathematical expressions as types rather than immediately computing their results.
+
+3. **Deferred Evaluation**: Instead of performing computations immediately, expression templates build a representation of the entire expression in a type. This defers the computation until the value is actually needed.
+
+4. **Compile-Time Optimization**: The compiler can analyze and optimize the entire expression at once, potentially eliminating temporary variables and reducing the number of operations.
+
+5. **Example Use Case**: Consider the operation `a = b + c + d;` in the context of vectors. Without expression templates, each `+` operation might create a temporary vector, leading to multiple iterations over the vectors. With expression templates, the entire expression is evaluated in a single pass, without temporary vectors.
+
+### Benefits of Expression Templates
+
+- **Performance Efficiency**: By minimizing temporary objects and redundant computations, expression templates can significantly improve performance, especially in numerical computations.
+
+- **Memory Optimization**: Reduces memory overhead by eliminating unnecessary temporary objects.
+
+- **Expressive Code**: Allows for writing mathematical operations in a natural and readable way, making the code easier to understand and maintain.
+
+### Challenges and Considerations
+
+- **Complexity**: Implementing expression templates can be complex and requires a deep understanding of C++ templates and operator overloading.
+
+- **Compile-Time Overhead**: They can increase the compile time due to the complex template metaprogramming involved.
+
+- **Debugging Difficulty**: Debugging expression templates can be challenging due to the complexity of the generated types and the compile-time nature of the errors.
+
+Expression templates are a powerful technique in C++, especially for libraries dealing with linear algebra, numerical methods, or any domain where complex mathematical expressions are common. However, due to their complexity, they are more suited for advanced C++ programmers and library developers.
 
 
+Let's create a simplified example to illustrate how expression templates work in C++, focusing on a scenario involving vector arithmetic. This example will demonstrate the principles of deferred evaluation and compile-time optimization.
 
-# Separate the definition of templates class and putting it inside a .cpp files
+### Scenario: Vector Arithmetic
 
-Refs: [1](https://stackoverflow.com/questions/115703/storing-c-template-function-definitions-in-a-cpp-file)
+Suppose we have a basic `Vector` class and want to perform operations like addition of vectors. Normally, each operation like `v1 + v2` would return a temporary `Vector` object, leading to inefficiency, especially in chained expressions like `v1 + v2 + v3`.
+
+### Step-by-Step Implementation of Expression Templates
+
+1. **Vector Class Definition**
+
+    ```cpp
+    class Vector {
+    public:
+        std::vector<double> data;
+
+        Vector(std::initializer_list<double> values) : data(values) {}
+
+        // Traditional way of adding vectors
+        Vector operator+(const Vector& other) const {
+            Vector result(data.size());
+            for (size_t i = 0; i < data.size(); ++i) {
+                result.data[i] = data[i] + other.data[i];
+            }
+            return result;
+        }
+
+        // Other methods...
+    };
+    ```
+
+2. **Expression Template for Addition**
+
+    ```cpp
+    template <typename L, typename R>
+    class VectorAddition {
+        const L& l;
+        const R& r;
+
+    public:
+        VectorAddition(const L& left, const R& right) : l(left), r(right) {}
+
+        double operator[](size_t index) const {
+            return l[index] + r[index];
+        }
+
+        size_t size() const { return l.size(); /* assuming both have same size */ }
+    };
+    ```
+
+3. **Overloading Operator for Expression Template**
+
+    ```cpp
+    template <typename L, typename R>
+    VectorAddition<L, R> operator+(const L& left, const R& right) {
+        return VectorAddition<L, R>(left, right);
+    }
+    ```
+
+4. **Using the Expression Templates in Main Function**
+
+    ```cpp
+    int main() {
+        Vector v1 = {1.0, 2.0, 3.0};
+        Vector v2 = {4.0, 5.0, 6.0};
+        Vector v3 = {7.0, 8.0, 9.0};
+
+        // The following line does not perform any addition yet.
+        auto expr = v1 + v2 + v3;
+
+        // The actual addition happens here, in a single loop.
+        Vector result(expr.size());
+        for (size_t i = 0; i < expr.size(); ++i) {
+            result.data[i] = expr[i];
+        }
+
+        // Use result...
+    }
+    ```
+
+### Explanation
+
+- **Deferred Evaluation**: The expression `v1 + v2 + v3` does not perform any addition immediately. Instead, it creates an instance of `VectorAddition`, which merely stores references to the operands.
+
+- **Compile-Time Optimization**: The compiler can optimize the entire expression, potentially inlining the `operator[]` calls and avoiding temporary `Vector` objects.
+
+- **Efficiency**: When we finally loop over `expr` to compute the result, the additions for the entire expression are performed in a single pass, which is more efficient than creating multiple temporary vectors.
+
+

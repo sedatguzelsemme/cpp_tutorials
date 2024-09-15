@@ -1,41 +1,23 @@
-/*
-
-In this example we gonna overload the following operators:
-()
--
-<<
->>
-= deep copy (Copy constructor, Assignment operator)
-*/
 #include <iostream>
 #include <istream>
 #include <random>
 
-/*
-any of the following 38 (until C++20)40 (since C++20) operators:+ - * / % ^ & |
-~ ! = < > += -=
-*= /= %= ^= &= |= << >> >>= <<= == != <= >= <=> (since C++20) && || ++ -- , ->*
--> ( ) [ ]
-* co_await (since C++20)
-*/
-
 class money {
 private:
-  int size = 10;
+  int m_size = 10;
 
 public:
-  int value;
+  int m_value;
   int *data;
 
-  money(int value = 10) {
-    this->value = value;
-    std::cout << "Constructor money with value: " << this->value << std::endl;
+  money(int value = 10) : m_value(value) {
+    std::cout << "Constructor money with m_value: " << m_value << std::endl;
 
-    data = new int[size];
+    data = new int[m_size];
 
     int upperBound = 20;
     int lowerBound = 0;
-    int numberOfRandomNumbers = size;
+    int numberOfRandomNumbers = m_size;
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -46,59 +28,78 @@ public:
   }
 
   ~money() {
-    std::cout << "Destructor money with value: " << this->value << std::endl;
+    std::cout << "Destructor money with value: " << m_value << std::endl;
     delete[] data;
   }
 
-  double operator()() { return value; }
+  double operator()() { return m_value; }
 
-  friend money operator-(const money &t1, int value);
+  friend money operator-(const money &t1, int m_value);
   friend std::ostream &operator<<(std::ostream &os, const money &t);
   friend std::istream &operator>>(std::istream &is, const money &t);
 
-  bool operator<(const money &other) const { return value < other.value; }
+  bool operator<(const money &other) const { return m_value < other.m_value; }
 
   money operator-(const money &other) {
-    value - other.value;
+    m_value - other.m_value;
+    return *this;
+  }
+
+  // Copy constructor for deep copy
+  money(const money &other) : m_value(other.m_value), m_size(other.m_size) {
+    data = new int[m_size];
+    std::copy(other.data, other.data + m_size, data);
+  }
+
+  // Copy assignment operator for deep copy
+  money &operator=(const money &other) {
+    if (this != &other) {
+      delete[] data;
+
+      m_value = other.m_value;
+      m_size = other.m_size;
+      data = new int[m_size];
+      std::copy(other.data, other.data + m_size, data);
+    }
     return *this;
   }
 };
 
-money operator-(const money &t1, int value) { return money(t1.value - value); }
+money operator-(const money &t1, int m_value) {
+  return money(t1.m_value - m_value);
+}
 
 std::ostream &operator<<(std::ostream &os, const money &t) {
-  for (int i = 0; i < t.size; i++)
+  for (int i = 0; i < t.m_size; i++)
     os << t.data[i] << " ";
   return os;
 }
 
-std::istream &operator>>(std::istream &is, const money &t) {
-  is >> t.value;
+std::istream &operator>>(std::istream &is, money &t) {
+  is >> t.m_value;
   return is;
 }
 
+struct cell {
+  int index;
+  float cost;
+  //  bool operator<(const cell &otherside) { return cost < otherside.cost; }
+};
+
+bool operator<(const cell &lhs, const cell &rhs) { return lhs.cost < rhs.cost; }
+
 int main() {
 
-  ////////////////////////// - operator overloading ///////////////////////
+  money money3;
+  std::cout << "Enter the size: " << std::endl;
+
+  // getchar();
+  std::cin >> money3;
+  std::cout << "The operator >> gives you:" << money3 << std::endl;
 
   money money1(7), money2(3);
   std::cout << "The operator - gives you:" << std::endl;
   std::cout << money2 - money1 << std::endl;
-
-  ////////////////////////// < operator overloading ///////////////////////
-
-  std::cout << (money2 < money1) << std::endl;
-
-  ////////////////////////// () operator overloading ///////////////////////
-
-  std::cout << "The operator () gives you:\n" << money1() << std::endl;
-
-  //////////////////////// << operator overloading ///////////////////////
-
+  std::cout << "The operator ()  gives you:\n" << money1() << std::endl;
   std::cout << "The operator () << gives you:\n" << money1 << std::endl;
-
-  ////////////////////// >> operator overloading ///////////////////////
-  //     getchar();
-  //     std::cin>> money1;
-  //     std::cout<< "The operator >> gives you:"<< money1<<std::endl;
 }
